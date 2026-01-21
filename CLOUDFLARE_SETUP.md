@@ -23,21 +23,27 @@ Replace the default code in the worker editor with this:
 ```javascript
 export default {
   async fetch(request, env, ctx) {
-    // Only allow POST requests
-    if (request.method !== 'POST') {
-      return new Response('Method not allowed', { status: 405 });
-    }
-
-    // Optional: Add CORS headers if needed
+    // CORS headers - must be set on all responses
     const corsHeaders = {
       'Access-Control-Allow-Origin': '*', // Change to your domain for production
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type',
     };
 
-    // Handle preflight requests
+    // Handle preflight OPTIONS requests
     if (request.method === 'OPTIONS') {
-      return new Response(null, { headers: corsHeaders });
+      return new Response(null, { 
+        status: 204,
+        headers: corsHeaders 
+      });
+    }
+
+    // Only allow POST requests
+    if (request.method !== 'POST') {
+      return new Response('Method not allowed', { 
+        status: 405,
+        headers: corsHeaders 
+      });
     }
 
     try {
@@ -59,6 +65,7 @@ export default {
 
       // Return the response with CORS headers
       return new Response(JSON.stringify(data), {
+        status: response.status,
         headers: {
           'Content-Type': 'application/json',
           ...corsHeaders
