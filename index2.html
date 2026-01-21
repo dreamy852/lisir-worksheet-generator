@@ -289,7 +289,7 @@
         async function extractQuestions(content) {
             const prompt = `Extract all questions from the following content. Return ONLY the questions, one per line, without numbering or extra text.
 
-IMPORTANT: For any mathematical equations or expressions, use LaTeX notation (e.g., $x^2 + 5x + 6 = 0$ for inline math, or $$\\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$$ for display math).
+IMPORTANT: For any mathematical equations or expressions, do NOT use LaTeX notation. Instead, use plain text mathematical expressions (e.g., x^2 + 5x + 6 = 0 instead of $x^2 + 5x + 6 = 0$, or (-b ± sqrt(b^2-4ac))/(2a) instead of $$\\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$$).
 
 ${content}
 
@@ -310,7 +310,7 @@ Return only the questions, one question per line:`;
                 // Translate 繁體中文 to English
                 const prompt = `Translate the following question from Traditional Chinese to English. Return only the translation, no explanation.
 
-IMPORTANT: Preserve any LaTeX notation (e.g., $...$ or $$...$$) exactly as it appears. Only translate the text, not the mathematical expressions:
+IMPORTANT: Do NOT use LaTeX notation. Convert any LaTeX notation to plain text mathematical expressions. Only translate the text, not the mathematical expressions:
 
 ${question}`;
                 const translated = await callDeepSeekAPI([
@@ -321,7 +321,7 @@ ${question}`;
                 // Translate English to 繁體中文
                 const prompt = `Translate the following question from English to Traditional Chinese (繁體中文). Return only the translation, no explanation.
 
-IMPORTANT: Preserve any LaTeX notation (e.g., $...$ or $$...$$) exactly as it appears. Only translate the text, not the mathematical expressions:
+IMPORTANT: Do NOT use LaTeX notation. Convert any LaTeX notation to plain text mathematical expressions. Only translate the text, not the mathematical expressions:
 
 ${question}`;
                 const translated = await callDeepSeekAPI([
@@ -335,6 +335,8 @@ ${question}`;
             const prompt = `For the following question, provide:
 1. A direct answer (concise, in a single line or brief format)
 2. A solution explanation (at most 50 words, but not too short - provide meaningful explanation)
+
+IMPORTANT: Do NOT use LaTeX notation. Use plain text mathematical expressions only.
 
 Format your response exactly as:
 Answer: [the direct answer]
@@ -618,6 +620,8 @@ ${topicInput}`;
             const prompt = `Given the following question and solution, extract:
 1. The direct answer (concise, just the final answer)
 2. A condensed solution explanation (extract or summarize from the provided solution, at most 50 words, but not too short - provide meaningful explanation)
+
+IMPORTANT: Do NOT use LaTeX notation. Convert any LaTeX notation to plain text mathematical expressions.
 
 Format your response exactly as:
 Answer: [the direct answer]
