@@ -238,47 +238,189 @@
         }
 
         async function extractQuestions(content) {
-            const prompt = `Extract all questions from the following content. Return ONLY the questions, one per line, without numbering or extra text.
+            const prompt = `Extract all questions from the following content. For each question, identify if it is Multiple Choice (MC) or Long question.
 
 IMPORTANT: For any mathematical equations or expressions, do NOT use LaTeX notation. Instead, use plain text mathematical expressions (e.g., x^2 + 5x + 6 = 0 instead of $x^2 + 5x + 6 = 0$, or (-b ± sqrt(b^2-4ac))/(2a) instead of $$\\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$$).
 
+For each question, return in this format:
+TYPE: MC or LONG
+QUESTION: [the question text]
+[If MC, also include:]
+A. [option A]
+B. [option B]
+C. [option C]
+D. [option D]
+
+Separate each question with ---
+
 ${content}
 
-Return only the questions, one question per line:`;
+Return all questions:`;
             
             const response = await callDeepSeekAPI([
                 { role: 'user', content: prompt }
             ]);
             
-            return response.split('\n').filter(q => q.trim().length > 0);
+            // Parse the response to extract questions with their types
+            const questions = [];
+            const blocks = response.split('---').filter(b => b.trim().length > 0);
+            
+            for (const block of blocks) {
+                const lines = block.trim().split('\n').filter(l => l.trim().length > 0);
+                const typeLine = lines.find(l => l.toUpperCase().startsWith('TYPE:'));
+                const questionLine = lines.find(l => l.toUpperCase().startsWith('QUESTION:'));
+                
+                if (!typeLine || !questionLine) continue;
+                
+                const type = typeLine.replace(/TYPE:\s*/i, '').trim().toUpperCase();
+                const questionText = questionLine.replace(/QUESTION:\s*/i, '').trim();
+                
+                if (type === 'MC') {
+                    // Extract options A, B, C, D
+                    const options = {};
+                    lines.forEach(line => {
+                        const optionMatch = line.match(/^([A-D])\.\s*(.+)$/i);
+                        if (optionMatch) {
+                            options[optionMatch[1].toUpperCase()] = optionMatch[2].trim();
+                        }
+                    });
+                    
+                    questions.push({
+                        type: 'MC',
+                        question: questionText,
+                        options: options
+                    });
+                } else {
+                    questions.push({
+                        type: 'LONG',
+                        question: questionText,
+                        options: null
+                    });
+                }
+            }
+            
+            return questions;
         }
 
-        async function translateQuestion(question) {
+        async function translateQuestion(questionObj) {
             // Detect language - check if contains Chinese characters
-            const hasChinese = /[\u4e00-\u9fff]/.test(question);
+            const questionText = questionObj.question;
+            const hasChinese = /[\u4e00-\u9fff]/.test(questionText);
             
-            if (hasChinese) {
-                // Translate 繁體中文 to English
-                const prompt = `Translate the following question from Traditional Chinese to English. Return only the translation, no explanation.
+            if (questionObj.type === 'MC') {
+                // Translate MC question with options
+                const optionsText = Object.entries(questionObj.options)
+                    .map(([key, value]) => `${key}. ${value}`)
+                    .join('\n');
+                
+                if (hasChinese) {
+                    // Translate 繁體中文 to English
+                    const prompt = `Translate the following multiple choice question and options from Traditional Chinese to English. 
 
-IMPORTANT: Do NOT use LaTeX notation. Convert any LaTeX notation to plain text mathematical expressions. Only translate the text, not the mathematical expressions:
+IMPORTANT: Do NOT use LaTeX notation. Convert any LaTeX notation to plain text mathematical expressions. Translate all text, but preserve the option labels (A, B, C, D).
 
-${question}`;
-                const translated = await callDeepSeekAPI([
-                    { role: 'user', content: prompt }
-                ]);
-                return { original: question, translated: translated, originalLang: '繁體中文', translatedLang: 'English' };
+Question: ${questionText}
+
+Options:
+${optionsText}
+
+Return in this exact format:
+QUESTION: [translated question]
+A. [translated option A]
+B. [translated option B]
+C. [translated option C]
+D. [translated option D]`;
+                    
+                    const translated = await callDeepSeekAPI([
+                        { role: 'user', content: prompt }
+                    ]);
+                    
+                    // Parse translated options
+                    const lines = translated.split('\n').filter(l => l.trim().length > 0);
+                    const translatedQuestion = lines.find(l => l.toUpperCase().startsWith('QUESTION:'))?.replace(/QUESTION:\s*/i, '').trim() || questionText;
+                    const translatedOptions = {};
+                    lines.forEach(line => {
+                        const optionMatch = line.match(/^([A-D])\.\s*(.+)$/i);
+                        if (optionMatch) {
+                            translatedOptions[optionMatch[1].toUpperCase()] = optionMatch[2].trim();
+                        }
+                    });
+                    
+                    return {
+                        ...questionObj,
+                        original: questionText,
+                        translated: translatedQuestion,
+                        originalOptions: questionObj.options,
+                        translatedOptions: translatedOptions,
+                        originalLang: '繁體中文',
+                        translatedLang: 'English'
+                    };
+                } else {
+                    // Translate English to 繁體中文
+                    const prompt = `Translate the following multiple choice question and options from English to Traditional Chinese (繁體中文).
+
+IMPORTANT: Do NOT use LaTeX notation. Convert any LaTeX notation to plain text mathematical expressions. Translate all text, but preserve the option labels (A, B, C, D).
+
+Question: ${questionText}
+
+Options:
+${optionsText}
+
+Return in this exact format:
+QUESTION: [translated question]
+A. [translated option A]
+B. [translated option B]
+C. [translated option C]
+D. [translated option D]`;
+                    
+                    const translated = await callDeepSeekAPI([
+                        { role: 'user', content: prompt }
+                    ]);
+                    
+                    // Parse translated options
+                    const lines = translated.split('\n').filter(l => l.trim().length > 0);
+                    const translatedQuestion = lines.find(l => l.toUpperCase().startsWith('QUESTION:'))?.replace(/QUESTION:\s*/i, '').trim() || questionText;
+                    const translatedOptions = {};
+                    lines.forEach(line => {
+                        const optionMatch = line.match(/^([A-D])\.\s*(.+)$/i);
+                        if (optionMatch) {
+                            translatedOptions[optionMatch[1].toUpperCase()] = optionMatch[2].trim();
+                        }
+                    });
+                    
+                    return {
+                        ...questionObj,
+                        original: questionText,
+                        translated: translatedQuestion,
+                        originalOptions: questionObj.options,
+                        translatedOptions: translatedOptions,
+                        originalLang: 'English',
+                        translatedLang: '繁體中文'
+                    };
+                }
             } else {
-                // Translate English to 繁體中文
-                const prompt = `Translate the following question from English to Traditional Chinese (繁體中文). Return only the translation, no explanation.
+                // Translate LONG question
+                if (hasChinese) {
+                    const prompt = `Translate the following question from Traditional Chinese to English. Return only the translation, no explanation.
 
 IMPORTANT: Do NOT use LaTeX notation. Convert any LaTeX notation to plain text mathematical expressions. Only translate the text, not the mathematical expressions:
 
-${question}`;
-                const translated = await callDeepSeekAPI([
-                    { role: 'user', content: prompt }
-                ]);
-                return { original: question, translated: translated, originalLang: 'English', translatedLang: '繁體中文' };
+${questionText}`;
+                    const translated = await callDeepSeekAPI([
+                        { role: 'user', content: prompt }
+                    ]);
+                    return { ...questionObj, original: questionText, translated: translated, originalLang: '繁體中文', translatedLang: 'English' };
+                } else {
+                    const prompt = `Translate the following question from English to Traditional Chinese (繁體中文). Return only the translation, no explanation.
+
+IMPORTANT: Do NOT use LaTeX notation. Convert any LaTeX notation to plain text mathematical expressions. Only translate the text, not the mathematical expressions:
+
+${questionText}`;
+                    const translated = await callDeepSeekAPI([
+                        { role: 'user', content: prompt }
+                    ]);
+                    return { ...questionObj, original: questionText, translated: translated, originalLang: 'English', translatedLang: '繁體中文' };
+                }
             }
         }
 
@@ -317,7 +459,7 @@ ${question}`;
 
         async function generateTopic(questions) {
             // Analyze questions to generate a topic
-            const questionsText = questions.slice(0, 3).join('\n'); // Use first 3 questions for context
+            const questionsText = questions.slice(0, 3).map(q => q.question || q).join('\n'); // Use first 3 questions for context
             
             const promptEn = `Based on these questions, generate a concise topic/title in English (2-5 words):
 
@@ -471,11 +613,40 @@ ${topicInput}`;
             `;
 
             translatedQuestions.forEach((item, index) => {
-                const englishText = item.originalLang === 'English' ? item.original : item.translated;
-                const chineseText = item.originalLang === '繁體中文' ? item.original : item.translated;
-                html += `
+                if (item.type === 'MC') {
+                    // Display MC question with options
+                    const englishQuestion = item.originalLang === 'English' ? item.original : item.translated;
+                    const chineseQuestion = item.originalLang === '繁體中文' ? item.original : item.translated;
+                    const englishOptions = item.originalLang === 'English' ? item.originalOptions : item.translatedOptions;
+                    const chineseOptions = item.originalLang === '繁體中文' ? item.originalOptions : item.translatedOptions;
+                    
+                    html += `
+                        <li>
+                            <div>${englishQuestion}</div>
+                            <div style="margin-left: 20px; margin-top: 10px;">
+                                A. ${englishOptions['A'] || ''}<br>
+                                B. ${englishOptions['B'] || ''}<br>
+                                C. ${englishOptions['C'] || ''}<br>
+                                D. ${englishOptions['D'] || ''}
+                            </div>
+                            <br>
+                            <div>${chineseQuestion}</div>
+                            <div style="margin-left: 20px; margin-top: 10px;">
+                                A. ${chineseOptions['A'] || ''}<br>
+                                B. ${chineseOptions['B'] || ''}<br>
+                                C. ${chineseOptions['C'] || ''}<br>
+                                D. ${chineseOptions['D'] || ''}
+                            </div>
+                        </li>
+                    `;
+                } else {
+                    // Display LONG question
+                    const englishText = item.originalLang === 'English' ? item.original : item.translated;
+                    const chineseText = item.originalLang === '繁體中文' ? item.original : item.translated;
+                    html += `
                         <li>${englishText}<br><br>${chineseText}</li>
-                `;
+                    `;
+                }
             });
 
             html += `
@@ -518,14 +689,56 @@ ${topicInput}`;
             `;
 
             translatedQuestionsWithAnswers.forEach((item, index) => {
-                const englishText = item.originalLang === 'English' ? item.original : item.translated;
-                const chineseText = item.originalLang === '繁體中文' ? item.original : item.translated;
-                const englishAnswer = item.englishAnswer;
-                const chineseAnswer = item.chineseAnswer;
-                const englishSolution = item.englishSolution || '';
-                const chineseSolution = item.chineseSolution || '';
-                
-                html += `
+                if (item.type === 'MC') {
+                    // Display MC question with options and answer
+                    const englishQuestion = item.originalLang === 'English' ? item.original : item.translated;
+                    const chineseQuestion = item.originalLang === '繁體中文' ? item.original : item.translated;
+                    const englishOptions = item.originalLang === 'English' ? item.originalOptions : item.translatedOptions;
+                    const chineseOptions = item.originalLang === '繁體中文' ? item.originalOptions : item.translatedOptions;
+                    const englishAnswer = item.englishAnswer;
+                    const chineseAnswer = item.chineseAnswer;
+                    const englishSolution = item.englishSolution || '';
+                    const chineseSolution = item.chineseSolution || '';
+                    
+                    html += `
+                        <li>
+                            <div>${englishQuestion}</div>
+                            <div style="margin-left: 20px; margin-top: 10px;">
+                                A. ${englishOptions['A'] || ''}<br>
+                                B. ${englishOptions['B'] || ''}<br>
+                                C. ${englishOptions['C'] || ''}<br>
+                                D. ${englishOptions['D'] || ''}
+                            </div>
+                            <br>
+                            <div>${chineseQuestion}</div>
+                            <div style="margin-left: 20px; margin-top: 10px;">
+                                A. ${chineseOptions['A'] || ''}<br>
+                                B. ${chineseOptions['B'] || ''}<br>
+                                C. ${chineseOptions['C'] || ''}<br>
+                                D. ${chineseOptions['D'] || ''}
+                            </div>
+                            <div style="margin-top: 8px; margin-left: 20px; color: #0066cc; font-weight: bold;">
+                                Answer: ${englishAnswer}<br/>
+                                答案：${chineseAnswer}
+                            </div>
+                            ${englishSolution || chineseSolution ? `
+                            <div style="margin-top: 8px; margin-left: 20px; color: #008800; font-style: italic;">
+                                Solution: ${englishSolution}<br/>
+                                解法：${chineseSolution}
+                            </div>
+                            ` : ''}
+                        </li>
+                    `;
+                } else {
+                    // Display LONG question with answer
+                    const englishText = item.originalLang === 'English' ? item.original : item.translated;
+                    const chineseText = item.originalLang === '繁體中文' ? item.original : item.translated;
+                    const englishAnswer = item.englishAnswer;
+                    const chineseAnswer = item.chineseAnswer;
+                    const englishSolution = item.englishSolution || '';
+                    const chineseSolution = item.chineseSolution || '';
+                    
+                    html += `
                         <li>
                             <div>${englishText}<br><br>${chineseText}</div>
                             <div style="margin-top: 8px; margin-left: 20px; color: #0066cc; font-weight: bold;">
@@ -539,7 +752,8 @@ ${topicInput}`;
                             </div>
                             ` : ''}
                         </li>
-                `;
+                    `;
+                }
             });
 
             html += `
