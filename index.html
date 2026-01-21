@@ -222,8 +222,8 @@
     </div>
 
     <script>
-        const DEEPSEEK_API_KEY = 'sk-0fdaddd9f0db4e70821938381de23af6';
-        const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions';
+        // Cloudflare Worker endpoint
+        const CLOUDFLARE_WORKER_URL = 'https://deepseek-proxy.dreamy852.workers.dev/';
         
         // Store translated questions and topic for answer generation
         let storedTranslatedQuestions = null;
@@ -231,11 +231,10 @@
         let storedPastedImage = null;
 
         async function callDeepSeekAPI(messages) {
-            const response = await fetch(DEEPSEEK_API_URL, {
+            const response = await fetch(CLOUDFLARE_WORKER_URL, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
                     model: 'deepseek-chat',
