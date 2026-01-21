@@ -837,12 +837,39 @@ Solution: ${solution}`;
                             extractAnswerFromSolution(chineseQuestion, solutionText)
                         ]);
                         
+                        // Ensure solutions are properly translated
+                        // Translate solutions to ensure proper language
+                        let englishSolution = englishResult.solution;
+                        let chineseSolution = chineseResult.solution;
+                        
+                        // Check if solutions need translation
+                        const englishHasChinese = /[\u4e00-\u9fff]/.test(englishSolution);
+                        const chineseHasEnglish = !/[\u4e00-\u9fff]/.test(chineseSolution);
+                        
+                        if (englishHasChinese) {
+                            // English solution is actually in Chinese, translate it
+                            const translatePrompt = `Translate the following solution explanation from Traditional Chinese to English. Return only the translation, no explanation:
+
+${englishSolution}`;
+                            englishSolution = await callDeepSeekAPI([{ role: 'user', content: translatePrompt }]);
+                            await new Promise(resolve => setTimeout(resolve, 500));
+                        }
+                        
+                        if (chineseHasEnglish && !/[\u4e00-\u9fff]/.test(chineseSolution)) {
+                            // Chinese solution is actually in English, translate it
+                            const translatePrompt = `Translate the following solution explanation from English to Traditional Chinese (繁體中文). Return only the translation, no explanation:
+
+${chineseSolution}`;
+                            chineseSolution = await callDeepSeekAPI([{ role: 'user', content: translatePrompt }]);
+                            await new Promise(resolve => setTimeout(resolve, 500));
+                        }
+                        
                         translatedQuestionsWithAnswers.push({
                             ...storedTranslatedQuestions[i],
                             englishAnswer: englishResult.answer,
                             chineseAnswer: chineseResult.answer,
-                            englishSolution: englishResult.solution,
-                            chineseSolution: chineseResult.solution
+                            englishSolution: englishSolution,
+                            chineseSolution: chineseSolution
                         });
                         // Small delay to avoid rate limiting
                         await new Promise(resolve => setTimeout(resolve, 500));
@@ -865,12 +892,38 @@ Solution: ${solution}`;
                             generateAnswer(chineseQuestion)
                         ]);
                         
+                        // Ensure solutions are properly translated
+                        let englishSolution = englishResult.solution;
+                        let chineseSolution = chineseResult.solution;
+                        
+                        // Check if solutions need translation
+                        const englishHasChinese = /[\u4e00-\u9fff]/.test(englishSolution);
+                        const chineseHasEnglish = !/[\u4e00-\u9fff]/.test(chineseSolution);
+                        
+                        if (englishHasChinese) {
+                            // English solution is actually in Chinese, translate it
+                            const translatePrompt = `Translate the following solution explanation from Traditional Chinese to English. Return only the translation, no explanation:
+
+${englishSolution}`;
+                            englishSolution = await callDeepSeekAPI([{ role: 'user', content: translatePrompt }]);
+                            await new Promise(resolve => setTimeout(resolve, 500));
+                        }
+                        
+                        if (chineseHasEnglish && !/[\u4e00-\u9fff]/.test(chineseSolution)) {
+                            // Chinese solution is actually in English, translate it
+                            const translatePrompt = `Translate the following solution explanation from English to Traditional Chinese (繁體中文). Return only the translation, no explanation:
+
+${chineseSolution}`;
+                            chineseSolution = await callDeepSeekAPI([{ role: 'user', content: translatePrompt }]);
+                            await new Promise(resolve => setTimeout(resolve, 500));
+                        }
+                        
                         translatedQuestionsWithAnswers.push({
                             ...storedTranslatedQuestions[i],
                             englishAnswer: englishResult.answer,
                             chineseAnswer: chineseResult.answer,
-                            englishSolution: englishResult.solution,
-                            chineseSolution: chineseResult.solution
+                            englishSolution: englishSolution,
+                            chineseSolution: chineseSolution
                         });
                         // Small delay to avoid rate limiting
                         await new Promise(resolve => setTimeout(resolve, 500));
