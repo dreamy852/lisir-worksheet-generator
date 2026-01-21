@@ -93,6 +93,16 @@
             max-width: 200px;
             margin-bottom: 20px;
         }
+        .worksheet-logo {
+            font-family: Arial, sans-serif;
+            font-size: 32px;
+            font-weight: normal;
+            margin-bottom: 20px;
+            line-height: 1.2;
+        }
+        .worksheet-logo .blue-text {
+            color: #007bff;
+        }
         .worksheet .pasted-image-container {
             margin: 20px 0;
             text-align: center;
@@ -466,7 +476,9 @@ ${topicInput}`;
         function generateWorksheetHTML(topic, translatedQuestions) {
             let html = `
                 <div class="worksheet">
-                    <img src="Logo.png" alt="Logo">
+                    <div class="worksheet-logo">
+                        <span class="blue-text">李 Sir</span> 教室 <span class="blue-text">Mr. Li</span> Classroom
+                    </div>
                     <div style="margin-bottom: 20px;">
                         <strong>Name:</strong> __________<br>
                         <strong>Class:</strong> ___________
@@ -511,7 +523,9 @@ ${topicInput}`;
         function generateAnswerSheetHTML(topic, translatedQuestionsWithAnswers) {
             let html = `
                 <div class="worksheet answer-sheet">
-                    <img src="Logo.png" alt="Logo">
+                    <div class="worksheet-logo">
+                        <span class="blue-text">李 Sir</span> 教室 <span class="blue-text">Mr. Li</span> Classroom
+                    </div>
                     <div style="margin-bottom: 20px;">
                         <strong>Name:</strong> __________<br>
                         <strong>Class:</strong> ___________
