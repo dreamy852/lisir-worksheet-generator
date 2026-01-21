@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Worksheet Generator</title>
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                processEscapes: true,
+                processEnvironments: true
+            },
+            options: {
+                ignoreHtmlClass: 'tex2jax_ignore',
+                processHtmlClass: 'tex2jax_process'
+            }
+        };
+    </script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            font-family: Arial, sans-serif;
+            box-sizing: border-box;
+            margin-bottom: 10px;
+        }
+        textarea {
+            width: 100%;
+            min-height: 200px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            font-family: Arial, sans-serif;
+            resize: vertical;
+            box-sizing: border-box;
+        }
+        button {
+            margin-top: 15px;
+            padding: 12px 24px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        #status {
+            margin-top: 15px;
+            color: #666;
+        }
+        #output {
+            margin-top: 30px;
+        }
+        .worksheet {
+            background: white;
+            padding: 40px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .worksheet > img {
+            max-width: 200px;
+            margin-bottom: 20px;
+        }
+        .worksheet .pasted-image-container {
+            margin: 20px 0;
+            text-align: center;
+        }
+        .worksheet .pasted-image-container img {
+            max-width: 100%;
+            max-height: none;
+            width: auto;
+            height: auto;
+            border-radius: 4px;
+        }
+        .worksheet h2 {
+            margin-top: 30px;
+            margin-bottom: 10px;
+        }
+        .worksheet hr {
+            margin: 20px 0;
+            border: none;
+            border-top: 1px solid #333;
+        }
+        .worksheet ol {
+            margin-top: 20px;
+            padding-left: 30px;
+        }
+        .worksheet li {
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+        .image-paste-area {
+            border: 2px dashed #ddd;
+            border-radius: 4px;
+            padding: 20px;
+            text-align: center;
+            background-color: #f9f9f9;
+            margin-bottom: 15px;
+            min-height: 100px;
+        }
+        .image-paste-area:hover {
+            border-color: #007bff;
+            background-color: #f0f8ff;
+        }
+        .image-paste-area.has-image {
+            border: 1px solid #ddd;
+            padding: 10px;
+        }
+        .image-paste-area img {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 4px;
+        }
+        .image-paste-area p {
+            margin: 0;
+            color: #666;
+        }
+        .print-btn {
+            margin-top: 20px;
+            background-color: #28a745;
+        }
+        .print-btn:hover {
+            background-color: #218838;
+        }
+        @media print {
+            .container > h1,
+            .container > label,
+            .container > p,
+            .container > input,
+            .container > textarea,
+            #solutionArea,
+            .container > button,
+            .image-paste-area,
+            #status {
+                display: none !important;
+            }
+            body {
+                background: white;
+                padding: 0;
+            }
+            .container {
+                box-shadow: none;
+                padding: 0;
+            }
+            .worksheet {
+                box-shadow: none;
+                border: none;
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Worksheet Generator</h1>
+        <label for="contentInput">Enter content containing questions:</label>
+        <p style="margin: 5px 0 10px 0; color: #666; font-size: 14px;">
+            💡 Tip: You can access <a href="https://gemini.google.com" target="_blank" style="color: #007bff;">gemini.google.com</a> to generate questions, then paste them here.
+        </p>
+        <p style="margin: 5px 0 10px 0; color: #666; font-size: 14px;">
+            💡 Tip: You can download the answer sheet if necessary: <a href="AnswerSheet.pdf" style="color: #007bff;">AnswerSheet.pdf</a>.
+        </p>
+        <div class="image-paste-area" id="imagePasteArea">
+            <p>📷 Paste image here (Ctrl+V)</p>
+            <img id="pastedImage" style="display: none;" alt="Pasted image">
+        </div>
+        <label for="topicInput">Topic (optional):</label>
+        <input type="text" id="topicInput" placeholder="Leave empty for AI to generate topic">
+        <p style="margin: -5px 0 10px 0; color: #666; font-size: 12px;">
+            💡 If nothing is written, AI will generate a topic automatically. Otherwise, your topic will be used.
+        </p>
+        <textarea id="contentInput" placeholder="Paste your content here..."></textarea>
+        <button id="submitBtn" onclick="processContent()">Submit</button>
+    <div id="status"></div>
+    <div id="output"></div>
+        <button id="printBtn" class="print-btn" onclick="printWorksheet()" style="display: none;">Print Worksheet</button>
+        <div id="solutionArea" style="display: none; margin-top: 20px;">
+            <label for="solutionInput">Solution (optional):</label>
+            <textarea id="solutionInput" placeholder="Enter solutions here. If left empty, AI will generate answers automatically." style="width: 100%; min-height: 150px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; font-family: Arial, sans-serif; resize: vertical; box-sizing: border-box; margin-top: 5px;"></textarea>
+            <p style="margin: 5px 0 10px 0; color: #666; font-size: 12px;">
+                💡 If nothing is written, the system will generate answers using AI. Otherwise, answers will be extracted from your solutions.
+            </p>
+            <button id="extractAnswerBtn" class="print-btn" onclick="extractOrGenerateAnswers()" style="background-color: #ffc107;">Extract Answer</button>
+        </div>
+        <div id="answerOutput" style="margin-top: 30px;"></div>
+        <button id="printAnswerBtn" class="print-btn" onclick="printAnswerSheet()" style="display: none;">Print Answer Sheet</button>
+    </div>
+
+    <script>
+        const DEEPSEEK_API_KEY = 'sk-0fdaddd9f0db4e70821938381de23af6';
+        const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions';
+        
+        // Store translated questions and topic for answer generation
+        let storedTranslatedQuestions = null;
+        let storedTopic = null;
+        let storedPastedImage = null;
+
+        async function callDeepSeekAPI(messages) {
+            const response = await fetch(DEEPSEEK_API_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
+                },
+                body: JSON.stringify({
+                    model: 'deepseek-chat',
+                    messages: messages,
+                    temperature: 0.7
+                })
+            });
+
+            if (!response.ok) {
+                const error = await response.text();
+                throw new Error(`API Error: ${response.status} - ${error}`);
+            }
+
+            const data = await response.json();
+            return data.choices[0].message.content.trim();
+        }
+
+        async function extractQuestions(content) {
+            const prompt = `Extract all questions from the following content. Return ONLY the questions, one per line, without numbering or extra text.
+
+IMPORTANT: For any mathematical equations or expressions, use LaTeX notation (e.g., $x^2 + 5x + 6 = 0$ for inline math, or $$\\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$$ for display math).
+
+${content}
+
+Return only the questions, one question per line:`;
+            
+            const response = await callDeepSeekAPI([
+                { role: 'user', content: prompt }
+            ]);
+            
+            return response.split('\n').filter(q => q.trim().length > 0);
+        }
+
+        async function translateQuestion(question) {
+            // Detect language - check if contains Chinese characters
+            const hasChinese = /[\u4e00-\u9fff]/.test(question);
+            
+            if (hasChinese) {
+                // Translate 繁體中文 to English
+                const prompt = `Translate the following question from Traditional Chinese to English. Return only the translation, no explanation.
+
+IMPORTANT: Preserve any LaTeX notation (e.g., $...$ or $$...$$) exactly as it appears. Only translate the text, not the mathematical expressions:
+
+${question}`;
+                const translated = await callDeepSeekAPI([
+                    { role: 'user', content: prompt }
+                ]);
+                return { original: question, translated: translated, originalLang: '繁體中文', translatedLang: 'English' };
+            } else {
+                // Translate English to 繁體中文
+                const prompt = `Translate the following question from English to Traditional Chinese (繁體中文). Return only the translation, no explanation.
+
+IMPORTANT: Preserve any LaTeX notation (e.g., $...$ or $$...$$) exactly as it appears. Only translate the text, not the mathematical expressions:
+
+${question}`;
+                const translated = await callDeepSeekAPI([
+                    { role: 'user', content: prompt }
+                ]);
+                return { original: question, translated: translated, originalLang: 'English', translatedLang: '繁體中文' };
+            }
+        }
+
+        async function generateAnswer(question) {
+            const prompt = `For the following question, provide:
+1. A direct answer (concise, in a single line or brief format)
+2. A solution explanation (at most 50 words, but not too short - provide meaningful explanation)
+
+Format your response exactly as:
+Answer: [the direct answer]
+Solution: [the solution explanation, at most 50 words]
+
+${question}`;
+            
+            const response = await callDeepSeekAPI([
+                { role: 'user', content: prompt }
+            ]);
+            
+            // Parse the response to extract answer and solution
+            const answerMatch = response.match(/Answer:\s*(.+?)(?:\n|Solution:|$)/i);
+            const solutionMatch = response.match(/Solution:\s*(.+?)(?:\n|$)/i);
+            
+            const answer = answerMatch ? answerMatch[1].trim() : response.trim();
+            let solution = solutionMatch ? solutionMatch[1].trim() : '';
+            
+            // Ensure solution is within 50 words but not too short
+            const words = solution.split(/\s+/).filter(w => w.length > 0);
+            if (words.length > 50) {
+                solution = words.slice(0, 50).join(' ');
+            }
+            
+            return { answer: answer, solution: solution };
+        }
+
+        async function generateTopic(questions) {
+            // Analyze questions to generate a topic
+            const questionsText = questions.slice(0, 3).join('\n'); // Use first 3 questions for context
+            
+            const promptEn = `Based on these questions, generate a concise topic/title in English (2-5 words):
+
+${questionsText}
+
+Return only the topic, no explanation:`;
+            
+            const promptZh = `Based on these questions, generate a concise topic/title in Traditional Chinese (繁體中文) (2-5 words):
+
+${questionsText}
+
+Return only the topic, no explanation:`;
+
+            const [topicEn, topicZh] = await Promise.all([
+                callDeepSeekAPI([{ role: 'user', content: promptEn }]),
+                callDeepSeekAPI([{ role: 'user', content: promptZh }])
+            ]);
+
+            return { english: topicEn, chinese: topicZh };
+        }
+
+        async function processContent() {
+            const contentInput = document.getElementById('contentInput');
+            const submitBtn = document.getElementById('submitBtn');
+        const statusDiv = document.getElementById('status');
+        const outputDiv = document.getElementById('output');
+
+            const content = contentInput.value.trim();
+            if (!content) {
+                alert('Please enter some content!');
+                return;
+            }
+
+            submitBtn.disabled = true;
+            statusDiv.textContent = 'Processing... Extracting questions...';
+            outputDiv.innerHTML = '';
+            document.getElementById('answerOutput').innerHTML = '';
+            document.getElementById('printBtn').style.display = 'none';
+            document.getElementById('solutionArea').style.display = 'none';
+            document.getElementById('printAnswerBtn').style.display = 'none';
+            document.getElementById('solutionInput').value = '';
+            storedTranslatedQuestions = null;
+            storedTopic = null;
+            // Note: storedPastedImage is preserved so user can reuse it
+
+            try {
+                // Step 1: Extract questions
+                statusDiv.textContent = 'Extracting questions...';
+                const questions = await extractQuestions(content);
+                
+                if (questions.length === 0) {
+                    throw new Error('No questions found in the content.');
+                }
+
+                // Step 2: Translate questions
+                statusDiv.textContent = `Translating ${questions.length} questions...`;
+                const translatedQuestions = [];
+                for (let i = 0; i < questions.length; i++) {
+                    statusDiv.textContent = `Translating question ${i + 1} of ${questions.length}...`;
+                    const translation = await translateQuestion(questions[i]);
+                    translatedQuestions.push(translation);
+                    // Small delay to avoid rate limiting
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
+
+                // Step 3: Get or generate topic
+                const topicInput = document.getElementById('topicInput').value.trim();
+                let topic;
+                
+                if (topicInput) {
+                    // User provided topic - translate it to both languages
+                    statusDiv.textContent = 'Translating topic...';
+                    const hasChinese = /[\u4e00-\u9fff]/.test(topicInput);
+                    
+                    if (hasChinese) {
+                        // Topic is in Chinese, translate to English
+                        const prompt = `Translate the following topic/title from Traditional Chinese to English. Return only the translation, no explanation:
+
+${topicInput}`;
+                        const topicEn = await callDeepSeekAPI([
+                            { role: 'user', content: prompt }
+                        ]);
+                        topic = { english: topicEn.trim(), chinese: topicInput };
+                    } else {
+                        // Topic is in English, translate to Chinese
+                        const prompt = `Translate the following topic/title from English to Traditional Chinese (繁體中文). Return only the translation, no explanation:
+
+${topicInput}`;
+                        const topicZh = await callDeepSeekAPI([
+                            { role: 'user', content: prompt }
+                        ]);
+                        topic = { english: topicInput, chinese: topicZh.trim() };
+                    }
+                } else {
+                    // No topic provided - generate one
+                    statusDiv.textContent = 'Generating topic...';
+                    topic = await generateTopic(questions);
+                }
+
+                // Store for later answer generation
+                storedTranslatedQuestions = translatedQuestions;
+                storedTopic = topic;
+
+                // Step 4: Generate HTML worksheet (question paper only)
+                statusDiv.textContent = 'Generating worksheet...';
+                const worksheetHTML = generateWorksheetHTML(topic, translatedQuestions);
+                
+                outputDiv.innerHTML = worksheetHTML;
+                
+                // Show print button and solution area
+                document.getElementById('printBtn').style.display = 'block';
+                document.getElementById('solutionArea').style.display = 'block';
+                document.getElementById('printAnswerBtn').style.display = 'none';
+                
+                // Re-render MathJax after inserting HTML
+                if (window.MathJax) {
+                    MathJax.typesetPromise([outputDiv]).then(() => {
+                        statusDiv.textContent = 'Question paper ready! Enter solutions (optional) and click "Extract Answer" to create the answer sheet.';
+                    }).catch((err) => {
+                        console.error('MathJax rendering error:', err);
+                        statusDiv.textContent = 'Question paper ready! (with rendering warnings)';
+                    });
+                } else {
+                    statusDiv.textContent = 'Question paper ready! Enter solutions (optional) and click "Extract Answer" to create the answer sheet.';
+                }
+            } catch (error) {
+                statusDiv.textContent = `Error: ${error.message}`;
+                outputDiv.innerHTML = '';
+                console.error(error);
+            } finally {
+                submitBtn.disabled = false;
+            }
+        }
+
+        function generateWorksheetHTML(topic, translatedQuestions) {
+            let html = `
+                <div class="worksheet">
+                    <img src="Logo.png" alt="Logo">
+                    <div style="margin-bottom: 20px;">
+                        <strong>Name:</strong> __________<br>
+                        <strong>Class:</strong> ___________
+                    </div>
+                    <h2>Exercise: ${topic.english}</h2>
+                    <h2>練習： ${topic.chinese}</h2>
+                    <hr>
+            `;
+            
+            // Add pasted image if available (after header, before questions)
+            if (storedPastedImage) {
+                html += `
+                    <div class="pasted-image-container">
+                        <img src="${storedPastedImage}" alt="Pasted image">
+                    </div>
+                `;
+            }
+            
+            html += `
+                    <ol>
+            `;
+
+            translatedQuestions.forEach((item, index) => {
+                const englishText = item.originalLang === 'English' ? item.original : item.translated;
+                const chineseText = item.originalLang === '繁體中文' ? item.original : item.translated;
+                html += `
+                        <li>${englishText}<br><br>${chineseText}</li>
+                `;
+            });
+
+            html += `
+                    </ol>
+            `;
+            
+            html += `
+                </div>
+            `;
+
+            return html;
+        }
+
+        function generateAnswerSheetHTML(topic, translatedQuestionsWithAnswers) {
+            let html = `
+                <div class="worksheet answer-sheet">
+                    <img src="Logo.png" alt="Logo">
+                    <div style="margin-bottom: 20px;">
+                        <strong>Name:</strong> __________<br>
+                        <strong>Class:</strong> ___________
+                    </div>
+                    <h2>Exercise: ${topic.english} (Answer Key)</h2>
+                    <h2>練習： ${topic.chinese} （答案）</h2>
+                    <hr>
+            `;
+            
+            // Add pasted image if available (after header, before questions)
+            if (storedPastedImage) {
+                html += `
+                    <div class="pasted-image-container">
+                        <img src="${storedPastedImage}" alt="Pasted image">
+                    </div>
+                `;
+            }
+            
+            html += `
+                    <ol>
+            `;
+
+            translatedQuestionsWithAnswers.forEach((item, index) => {
+                const englishText = item.originalLang === 'English' ? item.original : item.translated;
+                const chineseText = item.originalLang === '繁體中文' ? item.original : item.translated;
+                const englishAnswer = item.englishAnswer;
+                const chineseAnswer = item.chineseAnswer;
+                const englishSolution = item.englishSolution || '';
+                const chineseSolution = item.chineseSolution || '';
+                
+                html += `
+                        <li>
+                            <div>${englishText}<br><br>${chineseText}</div>
+                            <div style="margin-top: 8px; margin-left: 20px; color: #0066cc; font-weight: bold;">
+                                Answer: ${englishAnswer}<br/>
+                                答案：${chineseAnswer}
+                            </div>
+                            ${englishSolution || chineseSolution ? `
+                            <div style="margin-top: 8px; margin-left: 20px; color: #008800; font-style: italic;">
+                                Solution: ${englishSolution}<br/>
+                                解法：${chineseSolution}
+                            </div>
+                            ` : ''}
+                        </li>
+                `;
+            });
+
+            html += `
+                    </ol>
+            `;
+            
+            html += `
+                </div>
+            `;
+
+            return html;
+        }
+
+        async function extractAnswerFromSolution(question, solution) {
+            const prompt = `Given the following question and solution, extract:
+1. The direct answer (concise, just the final answer)
+2. A condensed solution explanation (extract or summarize from the provided solution, at most 50 words, but not too short - provide meaningful explanation)
+
+Format your response exactly as:
+Answer: [the direct answer]
+Solution: [the condensed solution, at most 50 words]
+
+Question: ${question}
+Solution: ${solution}`;
+            
+            const response = await callDeepSeekAPI([
+                { role: 'user', content: prompt }
+            ]);
+            
+            // Parse the response to extract answer and solution
+            const answerMatch = response.match(/Answer:\s*(.+?)(?:\n|Solution:|$)/i);
+            const solutionMatch = response.match(/Solution:\s*(.+?)(?:\n|$)/i);
+            
+            const answer = answerMatch ? answerMatch[1].trim() : response.trim();
+            let extractedSolution = solutionMatch ? solutionMatch[1].trim() : solution.trim();
+            
+            // Ensure solution is within 50 words but not too short
+            const words = extractedSolution.split(/\s+/).filter(w => w.length > 0);
+            if (words.length > 50) {
+                extractedSolution = words.slice(0, 50).join(' ');
+            }
+            
+            return { answer: answer, solution: extractedSolution };
+        }
+
+        async function extractOrGenerateAnswers() {
+            if (!storedTranslatedQuestions || !storedTopic) {
+                alert('Please generate the question paper first!');
+                return;
+            }
+
+            const extractAnswerBtn = document.getElementById('extractAnswerBtn');
+            const statusDiv = document.getElementById('status');
+            const answerOutputDiv = document.getElementById('answerOutput');
+            const solutionInput = document.getElementById('solutionInput');
+            const solutionText = solutionInput.value.trim();
+            
+            extractAnswerBtn.disabled = true;
+            answerOutputDiv.innerHTML = '';
+
+            try {
+                const translatedQuestionsWithAnswers = [];
+                
+                if (solutionText) {
+                    // Extract answers from solutions
+                    statusDiv.textContent = `Extracting answers and solutions for ${storedTranslatedQuestions.length} questions...`;
+                    
+                    for (let i = 0; i < storedTranslatedQuestions.length; i++) {
+                        statusDiv.textContent = `Extracting answer and solution for question ${i + 1} of ${storedTranslatedQuestions.length}...`;
+                        const englishQuestion = storedTranslatedQuestions[i].originalLang === 'English' 
+                            ? storedTranslatedQuestions[i].original 
+                            : storedTranslatedQuestions[i].translated;
+                        const chineseQuestion = storedTranslatedQuestions[i].originalLang === '繁體中文' 
+                            ? storedTranslatedQuestions[i].original 
+                            : storedTranslatedQuestions[i].translated;
+                        
+                        const [englishResult, chineseResult] = await Promise.all([
+                            extractAnswerFromSolution(englishQuestion, solutionText),
+                            extractAnswerFromSolution(chineseQuestion, solutionText)
+                        ]);
+                        
+                        translatedQuestionsWithAnswers.push({
+                            ...storedTranslatedQuestions[i],
+                            englishAnswer: englishResult.answer,
+                            chineseAnswer: chineseResult.answer,
+                            englishSolution: englishResult.solution,
+                            chineseSolution: chineseResult.solution
+                        });
+                        // Small delay to avoid rate limiting
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                    }
+                } else {
+                    // Generate answers using AI
+                    statusDiv.textContent = `Generating answers and solutions for ${storedTranslatedQuestions.length} questions...`;
+                    
+                    for (let i = 0; i < storedTranslatedQuestions.length; i++) {
+                        statusDiv.textContent = `Generating answer and solution for question ${i + 1} of ${storedTranslatedQuestions.length}...`;
+                        const englishQuestion = storedTranslatedQuestions[i].originalLang === 'English' 
+                            ? storedTranslatedQuestions[i].original 
+                            : storedTranslatedQuestions[i].translated;
+                        const chineseQuestion = storedTranslatedQuestions[i].originalLang === '繁體中文' 
+                            ? storedTranslatedQuestions[i].original 
+                            : storedTranslatedQuestions[i].translated;
+                        
+                        const [englishResult, chineseResult] = await Promise.all([
+                            generateAnswer(englishQuestion),
+                            generateAnswer(chineseQuestion)
+                        ]);
+                        
+                        translatedQuestionsWithAnswers.push({
+                            ...storedTranslatedQuestions[i],
+                            englishAnswer: englishResult.answer,
+                            chineseAnswer: chineseResult.answer,
+                            englishSolution: englishResult.solution,
+                            chineseSolution: chineseResult.solution
+                        });
+                        // Small delay to avoid rate limiting
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                    }
+                }
+
+                // Generate answer sheet HTML
+                statusDiv.textContent = 'Generating answer sheet...';
+                const answerSheetHTML = generateAnswerSheetHTML(storedTopic, translatedQuestionsWithAnswers);
+                
+                answerOutputDiv.innerHTML = answerSheetHTML;
+                document.getElementById('printAnswerBtn').style.display = 'block';
+                
+                // Re-render MathJax after inserting HTML
+                if (window.MathJax) {
+                    MathJax.typesetPromise([answerOutputDiv]).then(() => {
+                        statusDiv.textContent = 'Answer sheet ready!';
+                    }).catch((err) => {
+                        console.error('MathJax rendering error:', err);
+                        statusDiv.textContent = 'Answer sheet ready! (with rendering warnings)';
+                    });
+                } else {
+                    statusDiv.textContent = 'Answer sheet ready!';
+                }
+            } catch (error) {
+                statusDiv.textContent = `Error: ${error.message}`;
+                answerOutputDiv.innerHTML = '';
+                console.error(error);
+            } finally {
+                extractAnswerBtn.disabled = false;
+            }
+        }
+
+        function printWorksheet() {
+            // Hide answer sheet temporarily
+            const answerOutput = document.getElementById('answerOutput');
+            const printAnswerBtn = document.getElementById('printAnswerBtn');
+            const originalDisplay = answerOutput.style.display;
+            const originalBtnDisplay = printAnswerBtn.style.display;
+            
+            answerOutput.style.display = 'none';
+            printAnswerBtn.style.display = 'none';
+            
+            window.print();
+            
+            // Restore display after printing
+            setTimeout(() => {
+                answerOutput.style.display = originalDisplay;
+                printAnswerBtn.style.display = originalBtnDisplay;
+            }, 100);
+        }
+
+        function printAnswerSheet() {
+            // Hide question paper temporarily
+            const output = document.getElementById('output');
+            const printBtn = document.getElementById('printBtn');
+            const originalDisplay = output.style.display;
+            const originalBtnDisplay = printBtn.style.display;
+            
+            output.style.display = 'none';
+            printBtn.style.display = 'none';
+            
+            window.print();
+            
+            // Restore display after printing
+            setTimeout(() => {
+                output.style.display = originalDisplay;
+                printBtn.style.display = originalBtnDisplay;
+            }, 100);
+        }
+        // Handle image paste
+        document.addEventListener('paste', (e) => {
+            const items = e.clipboardData.items;
+            for (let item of items) {
+                if (item.type.startsWith('image/')) {
+                    e.preventDefault();
+                    const file = item.getAsFile();
+                    handleImageFile(file);
+                    break;
+                }
+            }
+        });
+
+        function handleImageFile(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const imageDataUrl = e.target.result;
+                storedPastedImage = imageDataUrl;
+                
+                const pastedImage = document.getElementById('pastedImage');
+                const imagePasteArea = document.getElementById('imagePasteArea');
+                const areaText = imagePasteArea.querySelector('p');
+                
+                pastedImage.src = imageDataUrl;
+                pastedImage.style.display = 'block';
+                areaText.style.display = 'none';
+                imagePasteArea.classList.add('has-image');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function clearPastedImage() {
+            storedPastedImage = null;
+            const pastedImage = document.getElementById('pastedImage');
+            const imagePasteArea = document.getElementById('imagePasteArea');
+            const areaText = imagePasteArea.querySelector('p');
+            
+            pastedImage.src = '';
+            pastedImage.style.display = 'none';
+            areaText.style.display = 'block';
+            imagePasteArea.classList.remove('has-image');
+        }
+    </script>
+</body>
+</html>
