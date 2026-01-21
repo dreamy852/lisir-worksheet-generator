@@ -214,55 +214,6 @@
         let storedTopic = null;
         let storedPastedImage = null;
 
-        function convertLaTeXToPlainText(text) {
-            if (!text) return text;
-            // Remove LaTeX delimiters and convert common LaTeX patterns to plain text
-            let converted = text
-                // Remove inline math delimiters $...$
-                .replace(/\$([^$]+)\$/g, '$1')
-                // Remove display math delimiters $$...$$
-                .replace(/\$\$([^$]+)\$\$/g, '$1')
-                // Remove \( and \) delimiters
-                .replace(/\\?\(([^)]+)\\?\)/g, '$1')
-                // Remove \[ and \] delimiters
-                .replace(/\\?\[([^\]]+)\\?\]/g, '$1')
-                // Convert common LaTeX commands to plain text
-                .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '($1)/($2)')
-                .replace(/\\sqrt\{([^}]+)\}/g, 'sqrt($1)')
-                .replace(/\\sqrt\[([^\]]+)\]\{([^}]+)\}/g, '$1th root of $2')
-                .replace(/\^\{([^}]+)\}/g, '^($1)')
-                .replace(/\_\{([^}]+)\}/g, '_($1)')
-                .replace(/\\pm/g, '±')
-                .replace(/\\times/g, '×')
-                .replace(/\\div/g, '÷')
-                .replace(/\\leq/g, '≤')
-                .replace(/\\geq/g, '≥')
-                .replace(/\\neq/g, '≠')
-                .replace(/\\approx/g, '≈')
-                .replace(/\\sum/g, 'Σ')
-                .replace(/\\prod/g, 'Π')
-                .replace(/\\int/g, '∫')
-                .replace(/\\infty/g, '∞')
-                .replace(/\\pi/g, 'π')
-                .replace(/\\theta/g, 'θ')
-                .replace(/\\alpha/g, 'α')
-                .replace(/\\beta/g, 'β')
-                .replace(/\\gamma/g, 'γ')
-                .replace(/\\Delta/g, 'Δ')
-                .replace(/\\cdot/g, '·')
-                .replace(/\\text\{([^}]+)\}/g, '$1')
-                .replace(/\\mathrm\{([^}]+)\}/g, '$1')
-                .replace(/\\mathbf\{([^}]+)\}/g, '$1')
-                .replace(/\\mathit\{([^}]+)\}/g, '$1')
-                // Remove remaining backslashes before single letters (common in LaTeX)
-                .replace(/\\([a-zA-Z])/g, '$1')
-                // Clean up extra spaces
-                .replace(/\s+/g, ' ')
-                .trim();
-            
-            return converted;
-        }
-
         async function callDeepSeekAPI(messages) {
             const response = await fetch(DEEPSEEK_API_URL, {
                 method: 'POST',
@@ -481,20 +432,6 @@ ${topicInput}`;
                 document.getElementById('solutionArea').style.display = 'block';
                 document.getElementById('printAnswerBtn').style.display = 'none';
                 
-                // Convert LaTeX to plain text (MathJax disabled)
-                const worksheetContent = outputDiv.querySelector('.worksheet');
-                if (worksheetContent) {
-                    // Walk through all nodes and convert LaTeX in text nodes
-                    const walker = document.createTreeWalker(
-                        worksheetContent,
-                        NodeFilter.SHOW_TEXT,
-                        null
-                    );
-                    let node;
-                    while (node = walker.nextNode()) {
-                        node.textContent = convertLaTeXToPlainText(node.textContent);
-                    }
-                }
                 statusDiv.textContent = 'Question paper ready! Enter solutions (optional) and click "Extract Answer" to create the answer sheet.';
             } catch (error) {
                 statusDiv.textContent = `Error: ${error.message}`;
@@ -733,20 +670,6 @@ Solution: ${solution}`;
                 answerOutputDiv.innerHTML = answerSheetHTML;
                 document.getElementById('printAnswerBtn').style.display = 'block';
                 
-                // Convert LaTeX to plain text (MathJax disabled)
-                const answerSheetContent = answerOutputDiv.querySelector('.worksheet');
-                if (answerSheetContent) {
-                    // Walk through all nodes and convert LaTeX in text nodes
-                    const walker = document.createTreeWalker(
-                        answerSheetContent,
-                        NodeFilter.SHOW_TEXT,
-                        null
-                    );
-                    let node;
-                    while (node = walker.nextNode()) {
-                        node.textContent = convertLaTeXToPlainText(node.textContent);
-                    }
-                }
                 statusDiv.textContent = 'Answer sheet ready!';
             } catch (error) {
                 statusDiv.textContent = `Error: ${error.message}`;
